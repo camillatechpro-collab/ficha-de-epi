@@ -1,0 +1,14 @@
+# Backups baixados pelo app têm dados pessoais (CPF e assinaturas): nunca enviar ao GitHub
+fichas-epi-backup-*.json
+*.backup.json
+
+# Arquivos da base do CAEPI baixados manualmente (o app usa só data/cas.js)
+tgg_export_caepi.*
+
+# Sistema e editores
+node_modules/
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.log

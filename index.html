@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ficha de EPI — Controle de entrega de EPI</title>
+  <meta name="description" content="Fichas de entrega de EPI para os colaboradores, com termo de responsabilidade da NR-06 pronto para imprimir.">
+  <meta name="theme-color" content="#1f2a37">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topo">
+    <a href="#/" class="marca">
+      <img src="icons/icon.svg" alt="" width="34" height="34">
+      <span>Ficha de <b>EPI</b></span>
+    </a>
+    <nav class="menu" aria-label="Principal">
+      <a href="#/" data-rota="lista"><span class="ic" aria-hidden="true">🗂️</span><span>Fichas</span></a>
+      <a href="#/nova" data-rota="nova"><span class="ic" aria-hidden="true">✍️</span><span>Nova ficha</span></a>
+      <a href="#/backup" data-rota="backup"><span class="ic" aria-hidden="true">💾</span><span>Backup</span></a>
+    </nav>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <footer class="rodape">
+    Modelo de apoio para o registro de entrega de EPI. Adapte à realidade da empresa e valide com o profissional de SST responsável.
+  </footer>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="impressao" aria-hidden="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
