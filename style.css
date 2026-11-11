@@ -196,6 +196,39 @@ label input, label select, label textarea { margin-top: 5px; font-weight: 400; }
 .ca-info.bom { background: var(--verde-claro); color: var(--verde); }
 .ca-info.ruim { background: #fbe9e7; color: var(--vermelho); }
 .ca-info small { opacity: .75; }
+/* ---------- Painel e gestão ---------- */
+.numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.numero { background: var(--cartao); border: 1px solid var(--linha); border-radius: 12px; padding: 14px; text-decoration: none; color: inherit; cursor: pointer; }
+.numero:hover { border-color: var(--amarelo); }
+.numero b { display: block; font-size: 28px; }
+.numero span { color: var(--suave); font-size: 13px; }
+.numero.alerta { border-left: 5px solid var(--vermelho); } .numero.alerta b { color: var(--vermelho); }
+.numero.aviso { border-left: 5px solid var(--amarelo); }
+@media (max-width: 560px) { .numeros { grid-template-columns: repeat(2, 1fr); } }
+.pendencia { border-bottom: 1px solid var(--linha); padding: 10px 0; }
+.pendencia:last-child { border-bottom: 0; padding-bottom: 0; }
+.pendencia-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.pendencia-linha { font-size: 14px; margin: 4px 0; }
+.lista-simples { line-height: 2; font-size: 15px; }
+.filtros { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 16px 0 10px; }
+@media (max-width: 560px) { .filtros { grid-template-columns: 1fr; } }
+.grade-3 { grid-template-columns: 1fr 1fr 1fr; }
+.grade-3 .duplo { grid-column: span 2; }
+@media (max-width: 560px) { .grade-3 { grid-template-columns: 1fr; } .grade-3 .duplo { grid-column: auto; } }
+.item-bloco:hover { border-color: var(--linha); box-shadow: none; }
+.kit { border-top: 1px dashed var(--linha); margin-top: 12px; padding-top: 12px; }
+.kit-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.kit-item { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; padding: 6px 8px; border: 1px solid var(--linha); border-radius: 10px; }
+.kit-item span { flex: 1; }
+.kit-item input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--verde); }
+.kit-item input[type=number] { width: 64px; padding: 6px 8px; font-size: 14px; margin: 0; }
+.grade-mov { display: grid; grid-template-columns: 1.3fr .6fr .9fr 1.4fr auto; gap: 0 10px; align-items: end; }
+.grade-mov .btn { margin-bottom: 12px; }
+@media (max-width: 720px) { .grade-mov { grid-template-columns: 1fr 1fr; } }
+td.pos { color: var(--verde); font-weight: 600; } td.neg { color: var(--vermelho); font-weight: 600; }
+.ca-info.atencao { background: var(--amarelo-claro); color: #7a5600; }
+.cartao-topo .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* ---------- Menu: contador da lixeira ---------- */
 .badge { background: var(--vermelho); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; line-height: 1.4; }
 @media (max-width: 720px) { .menu a { position: relative; } .badge { position: absolute; top: 2px; right: 18%; } }

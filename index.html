@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ficha de EPI — Controle de entrega de EPI</title>
-  <meta name="description" content="Fichas de entrega de EPI para os colaboradores, com termo de responsabilidade da NR-06 pronto para imprimir.">
+  <meta name="description" content="Fichas de entrega de EPI com assinatura na tela, controle de trocas, estoque e kit de EPIs por função.">
   <meta name="theme-color" content="#1f2a37">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,11 +18,12 @@
       <span>Ficha de <b>EPI</b></span>
     </a>
     <nav class="menu" aria-label="Principal">
-      <a href="#/" data-rota="lista"><span class="ic" aria-hidden="true">🗂️</span><span>Fichas</span></a>
-      <a href="#/nova" data-rota="nova"><span class="ic" aria-hidden="true">✍️</span><span>Nova ficha</span></a>
+      <a href="#/" data-rota="painel"><span class="ic" aria-hidden="true">📊</span><span>Painel</span></a>
+      <a href="#/fichas" data-rota="lista"><span class="ic" aria-hidden="true">🗂️</span><span>Fichas</span></a>
+      <a href="#/colaboradores" data-rota="colaboradores"><span class="ic" aria-hidden="true">👥</span><span>Colaboradores</span></a>
+      <a href="#/epis" data-rota="epis"><span class="ic" aria-hidden="true">🦺</span><span>EPIs</span></a>
       <a href="#/funcoes" data-rota="funcoes"><span class="ic" aria-hidden="true">👷</span><span>Funções</span></a>
-      <a href="#/backup" data-rota="backup"><span class="ic" aria-hidden="true">💾</span><span>Backup</span></a>
-      <a href="#/lixeira" data-rota="lixeira"><span class="ic" aria-hidden="true">🗑️</span><span>Lixeira</span><span class="badge" id="contaLixeira" hidden></span></a>
+      <a href="#/backup" data-rota="dados"><span class="ic" aria-hidden="true">💾</span><span>Dados</span><span class="badge" id="contaLixeira" hidden title="Fichas na lixeira"></span></a>
     </nav>
   </header>
 
@@ -34,5 +37,6 @@
   <div id="impressao" aria-hidden="true"></div>
 
   <script src="app.js"></script>
+  <script src="gestao.js"></script>
 </body>
 </html>

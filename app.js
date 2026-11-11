@@ -133,17 +133,21 @@ function rotear() {
   const h = location.hash.replace(/^#\/?/, '');
   const [rota, id] = h.split('/');
   let ativo = 'lista';
-  if (rota === 'nova') { ativo = 'nova'; telaEditor(fichaNova()); }
+  fecharBusca();
+  if (rota === 'nova') { telaEditor(pegarRascunho() || fichaNova()); }
   else if (rota === 'ficha' || rota === 'assinar') {
     const f = lerFichas().find((x) => x.id === decodeURIComponent(id || ''));
-    if (!f) { location.hash = '#/'; return; }
+    if (!f) { location.hash = '#/fichas'; return; }
     completarFicha(f);
     if (rota === 'ficha') telaEditor(f); else telaAssinar(f);
   }
-  else if (rota === 'backup') { ativo = 'backup'; telaBackup(); }
+  else if (rota === 'fichas') telaLista();
+  else if (rota === 'backup' || rota === 'lixeira') { ativo = 'dados'; if (rota === 'backup') telaBackup(); else telaLixeira(); }
   else if (rota === 'funcoes') { ativo = 'funcoes'; telaFuncoes(); }
-  else if (rota === 'lixeira') { ativo = 'lixeira'; telaLixeira(); }
-  else telaLista();
+  else if (rota === 'colaboradores') { ativo = 'colaboradores'; telaColaboradores(); }
+  else if (rota === 'colaborador') { ativo = 'colaboradores'; telaColaborador(decodeURIComponent(id || '')); }
+  else if (rota === 'epis') { ativo = 'epis'; telaEpis(); }
+  else { ativo = 'painel'; telaPainel(); }
   document.querySelectorAll('.menu a').forEach((a) => a.classList.toggle('ativo', a.dataset.rota === ativo));
   atualizarMenu();
   window.scrollTo(0, 0);
@@ -208,7 +212,7 @@ let atual = null; // ficha em edição
 function telaEditor(ficha) {
   atual = structuredClone(ficha);
   app.innerHTML = `
-    <a href="#/" class="voltar">← Fichas</a>
+    <a href="#/fichas" class="voltar">← Fichas</a>
     <div class="saudacao">
       <div><h1 id="titulo">${atual.id ? esc(atual.colaborador) : 'Nova ficha'}</h1>
       <p class="data">Ficha de controle de entrega de EPI — NR-06</p></div>
@@ -218,7 +222,10 @@ function telaEditor(ficha) {
       <section class="cartao">
         <h2>Colaborador</h2>
         <div class="grade">
-          <label>Nome do colaborador <input type="text" name="colaborador" maxlength="120" autocomplete="off"></label>
+          <label>Nome do colaborador <span class="dica">— <a href="#/colaboradores">colaboradores</a></span>
+            <input type="text" name="colaborador" maxlength="120" autocomplete="off" list="listaColaboradores" placeholder="Escolha ou digite">
+            <datalist id="listaColaboradores"></datalist>
+            <span class="dica" id="statusColab"></span></label>
           <label>Data da ficha <input type="date" name="data"></label>
           <label>Função <span class="dica">— <a href="#/funcoes">gerenciar funções</a></span>
             <input type="text" name="funcao" maxlength="120" list="listaFuncoes" autocomplete="off" placeholder="Escolha ou digite">
@@ -248,7 +255,10 @@ function telaEditor(ficha) {
       <section class="cartao">
         <div class="cartao-topo">
           <h2>EPIs entregues</h2>
-          <button type="button" class="btn sec peq" id="btnAddItem">＋ Adicionar EPI</button>
+          <div class="acoes">
+            <button type="button" class="btn sec peq" id="btnKit" title="Adiciona os EPIs definidos para a função">🦺 EPIs da função</button>
+            <button type="button" class="btn sec peq" id="btnAddItem">＋ Adicionar EPI</button>
+          </div>
         </div>
         <div class="rolagem">
           <table class="tabela itens">
@@ -296,6 +306,17 @@ function telaEditor(ficha) {
   desenharItens();
   desenharAssinaturas();
   ligarCampoFuncao();
+  ligarCampoColaborador();
+  $('#btnKit').addEventListener('click', adicionarKitDaFuncao);
+  // Devolução: botões dentro das linhas de informação de cada item
+  $('#itens').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-devolver],[data-desfazer-dev]');
+    if (!b) return;
+    const it = atual.itens.find((i) => i.uid === (b.dataset.devolver || b.dataset.desfazerDev));
+    if (!it) return;
+    if (b.dataset.devolver) it.devolucao = hoje(); else delete it.devolucao;
+    if (salvar()) toast(b.dataset.devolver ? 'Devolução registrada ✓' : 'Devolução desfeita');
+  });
   form.elements.cpf.addEventListener('input', (e) => { e.target.value = mascararCpf(e.target.value); });
   $('#btnAssinar').addEventListener('click', () => {
     if (!salvar()) return;
@@ -597,6 +618,16 @@ function infoCa(it) {
 
 /** Preenche EPI e descrição a partir do CA, sem apagar o que a pessoa digitou. */
 function aplicarCa(it) {
+  // Primeiro o catálogo de EPIs da empresa (nome e descrição que a empresa usa), depois a base do CAEPI
+  const cat = epiDoCatalogoPorCa(it.ca);
+  if (cat) {
+    it.epiId = cat.id;
+    let mudou = false;
+    if (!it.epi.trim() || it.epi === it._autoEpi) { it.epi = cat.nome; it._autoEpi = cat.nome; mudou = true; }
+    if (cat.descricao && (!it.descricao.trim() || it.descricao === it._autoDesc)) { it.descricao = cat.descricao; it._autoDesc = cat.descricao; mudou = true; }
+    return mudou;
+  }
+  delete it.epiId;
   const c = consultarCa(it.ca);
   if (!c || !c.achou) return false;
   let mudou = false;
@@ -625,7 +656,7 @@ function desenharItens() {
     const assin = assinaturaDoItem(atual, it);
     const mostrarInfo = () => {
       info.lastElementChild.innerHTML = (assin
-        ? `<span class="ca-info assinado">✍️ Recebimento assinado pelo colaborador em ${dataHoraBR(assin.em)} — item travado</span>` : '') + infoCa(it);
+        ? `<span class="ca-info assinado">✍️ Recebimento assinado pelo colaborador em ${dataHoraBR(assin.em)} — item travado</span>` : '') + infoCa(it) + infoGestao(it);
       info.hidden = !info.lastElementChild.innerHTML;
     };
     if (assin) {
@@ -789,6 +820,7 @@ function salvar() {
 
   atual.itens = atual.itens.filter((i) => i.epi.trim());
   atual.atualizadoEm = new Date().toISOString();
+  vincularColaborador(atual); // liga (ou cadastra) o colaborador para o histórico e as trocas
   const lista = lerFichas();
   const novo = !atual.id;
   if (novo) { atual.id = novoId(); atual.criadoEm = atual.atualizadoEm; lista.push(atual); }
@@ -851,14 +883,18 @@ function telaFuncoes() {
     <p class="contagem">${funcoes.length} função${funcoes.length === 1 ? '' : 'ões'} cadastrada${funcoes.length === 1 ? '' : 's'}</p>
     <div class="lista">${funcoes.length ? funcoes.map((f, i) => {
       const n = uso(f.nome);
-      return `<div class="item item-funcao">
+      const kit = f.kit || [];
+      return `<div class="item item-bloco"><div class="item-funcao">
         <div><h3>${esc(f.nome)}</h3>
           <div class="selos">${f.setor ? `<span class="selo nr">${esc(f.setor)}</span>` : ''}
-          <span class="selo">${n} ficha${n === 1 ? '' : 's'}</span></div></div>
+          <span class="selo">${n} ficha${n === 1 ? '' : 's'}</span>
+          <span class="selo ${kit.length ? 'feito' : ''}">🦺 ${kit.length} EPI${kit.length === 1 ? '' : 's'} no kit</span></div>
+          ${kit.length ? `<p>${nomesDoKit(kit)}</p>` : ''}</div>
         <div class="acoes-lixo">
+          <button class="btn amarelo peq" data-kit="${i}">EPIs da função</button>
           <button class="btn sec peq" data-editar="${i}">Editar</button>
           <button class="btn perigo peq" data-remover="${i}">Remover</button>
-        </div></div>`;
+        </div></div><div class="kit" id="kit-${i}" hidden></div></div>`;
     }).join('') : '<div class="cartao vazio">Nenhuma função cadastrada ainda.</div>'}</div>`;
 
   $('#formFuncao').addEventListener('submit', (e) => {
@@ -882,6 +918,9 @@ function telaFuncoes() {
     f.nome = nome.trim();
     if (setor !== null) f.setor = setor.trim();
     if (gravarFuncoes(funcoes)) { toast('Função atualizada ✓ (fichas já salvas mantêm o nome antigo)'); telaFuncoes(); }
+  }));
+  app.querySelectorAll('[data-kit]').forEach((b) => b.addEventListener('click', () => {
+    abrirEditorKit(funcoes, Number(b.dataset.kit), $(`#kit-${b.dataset.kit}`));
   }));
   app.querySelectorAll('[data-remover]').forEach((b) => b.addEventListener('click', () => {
     const f = funcoes[b.dataset.remover];
@@ -936,7 +975,7 @@ function excluirAtual() {
     gravarFichas(lista.filter((x) => x.id !== f.id));
   }
   toast('Ficha movida para a lixeira');
-  location.hash = '#/';
+  location.hash = '#/fichas';
 }
 
 function telaLixeira() {
@@ -997,8 +1036,10 @@ function telaLixeira() {
 // ---------- tela: backup ----------
 function telaBackup() {
   const n = lerFichas().length;
+  const nLixo = lerLixeira().length;
   app.innerHTML = `
-    <div class="saudacao"><div><h1>Backup</h1><p class="data">${n} ficha${n === 1 ? '' : 's'} salva${n === 1 ? '' : 's'} neste navegador</p></div></div>
+    <div class="saudacao"><div><h1>Dados</h1><p class="data">${n} ficha${n === 1 ? '' : 's'} salva${n === 1 ? '' : 's'} neste navegador</p></div>
+      <a class="btn sec" href="#/lixeira">🗑️ Lixeira${nLixo ? ` (${nLixo})` : ''}</a></div>
     <div class="campanha">
       <strong>Os dados ficam só neste navegador</strong>
       <span>Faça backup com frequência. Limpar os dados do navegador apaga as fichas que não tiverem backup.</span>
@@ -1019,7 +1060,8 @@ function telaBackup() {
 }
 
 function fazerBackup() {
-  const dados = { app: 'ficha-epi', versao: 2, fichas: lerFichas(), funcoes: lerFuncoes(), lixeira: lerLixeira() };
+  const dados = { app: 'ficha-epi', versao: 3, fichas: lerFichas(), funcoes: lerFuncoes(), lixeira: lerLixeira(),
+    colaboradores: lerColaboradores(), epis: lerEpis(), estoque: lerEstoque() };
   const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1046,7 +1088,7 @@ async function restaurarBackup(arq) {
     // Funções: junta as do backup com as atuais, sem repetir
     const funcoes = lerFuncoes();
     for (const fn of Array.isArray(dados.funcoes) ? dados.funcoes : []) {
-      if (fn?.nome && !funcoes.some((x) => mesmoNome(x.nome, fn.nome))) funcoes.push({ nome: String(fn.nome), setor: String(fn.setor || '') });
+      if (fn?.nome && !funcoes.some((x) => mesmoNome(x.nome, fn.nome))) funcoes.push({ nome: String(fn.nome), setor: String(fn.setor || ''), kit: Array.isArray(fn.kit) ? fn.kit : [] });
     }
     gravarFuncoes(funcoes);
 
@@ -1057,6 +1099,7 @@ async function restaurarBackup(arq) {
       if (f?.id && f.excluidaEm && Array.isArray(f.itens) && !ativas.has(f.id) && !lixeira.some((x) => x.id === f.id)) lixeira.push(f);
     }
     gravarLixeira(lixeira);
+    restaurarGestao(dados); // colaboradores, catálogo de EPIs e estoque
 
     toast(`Backup restaurado ✓ ${add} nova(s), ${upd} atualizada(s)`);
     telaBackup();
@@ -1072,7 +1115,7 @@ function imprimir(f) {
   const linhas = f.itens.map((i) => {
     const a = assinaturaDoItem(f, i);
     return `<tr><td class="c">${esc(i.qtd)}</td><td>${esc(i.epi)}</td><td>${esc(i.descricao)}</td>
-      <td>${esc(i.ca)}</td><td>${dataBR(i.entrega)}</td><td>${dataBR(i.recebimento)}</td>
+      <td>${esc(i.ca)}</td><td>${dataBR(i.entrega)}</td><td>${dataBR(i.recebimento)}${i.devolucao ? `<br><small>Devolvido ${dataBR(i.devolucao)}</small>` : ''}</td>
       <td class="imp-ass-cel">${a ? `<img src="${a.imagem}" alt="">` : ''}</td></tr>`;
   });
   const ultima = f.assinaturas[f.assinaturas.length - 1];
@@ -1119,4 +1162,4 @@ function imprimir(f) {
   window.print();
 }
 
-rotear();
+// A primeira tela é aberta no fim de gestao.js, que é carregado depois deste arquivo.

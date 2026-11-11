@@ -10,6 +10,30 @@ App simples para criar fichas de controle de entrega de EPI (NR-06) para os cola
 - **Termo de responsabilidade**: texto padrão baseado na NR-06 e no art. 158 da CLT, editável em cada ficha. Confira com a redação vigente da norma.
 - **Imprimir / PDF**: gera a ficha em A4 com coluna de assinatura por EPI, linhas em branco para entregas futuras e campos de assinatura. Para PDF, escolha "Salvar como PDF" na janela de impressão.
 
+## Gestão de EPIs
+
+- **📊 Painel**: mostra:
+  - colaboradores ativos;
+  - trocas atrasadas e trocas dos próximos 15 dias;
+  - EPIs do kit ainda pendentes;
+  - fichas aguardando assinatura;
+  - estoque baixo;
+  - CAs vencidos entre os EPIs em uso.
+
+  O botão **Nova entrega com esses EPIs** abre a ficha já preenchida.
+- **👥 Colaboradores**:
+  - cadastro com nome, CPF, função, setor, matrícula e admissão;
+  - a página de cada colaborador mostra os EPIs em uso, a próxima troca, o kit pendente e o histórico de entregas;
+  - quem saiu da empresa pode ser marcado como inativo;
+  - a ficha cadastra o colaborador sozinha ao ser salva, e os nomes que já estão nas fichas podem ser importados.
+- **🦺 EPIs**:
+  - catálogo da empresa: o nº do CA preenche o nome e a descrição pela base do CAEPI;
+  - **vida útil** em dias, usada para calcular as trocas;
+  - **estoque**: estoque mínimo, saldo inicial, entradas (ex.: nota fiscal) e saídas/ajustes. As entregas das fichas descontam o estoque automaticamente a partir da data em que o EPI foi cadastrado.
+- **Kit por função**: em Funções › *EPIs da função*, marque quais EPIs cada função recebe e em que quantidade. Na ficha, o botão **🦺 EPIs da função** adiciona todos de uma vez.
+- **Devolução**: em cada EPI da ficha há o botão *Registrar devolução*. O EPI devolvido sai da lista "em uso" e, se fizer parte do kit, aparece como pendente de reposição.
+- **App instalável**: quando o app é aberto pelo endereço da internet (GitHub Pages, por exemplo), dá para instalá-lo no celular ou no computador pelo botão *📲 Instalar app* do Painel. Depois do primeiro acesso, ele funciona sem internet.
+
 ## Funções da empresa
 
 No menu **👷 Funções**, cadastre as funções existentes na empresa, com setor opcional. Na ficha, o campo **Função** sugere essas funções enquanto você digita. Se digitar uma função nova, aparece o atalho **＋ salvar na lista de funções**. A tela também mostra as funções já usadas nas fichas que ainda não estão na lista e permite adicioná-las de uma vez.
@@ -48,12 +72,14 @@ O script baixa a base oficial (cerca de 8 MB) e gera de novo o `data/cas.js`. El
 
 ## Dados
 
-As fichas ficam salvas no próprio navegador (localStorage). Use **Fazer backup** para baixar um arquivo `.json` com tudo (fichas, funções e lixeira) e **Restaurar backup** para carregar em outro computador ou navegador. Limpar os dados do navegador apaga as fichas.
+As fichas ficam salvas no próprio navegador (localStorage). Use **Fazer backup** para baixar um arquivo `.json` com tudo (fichas, colaboradores, EPIs, estoque, funções e lixeira) e **Restaurar backup** para carregar em outro computador ou navegador. Limpar os dados do navegador apaga as fichas.
 
 ## Arquivos
 
 - `index.html` — telas
-- `app.js` — lógica (cadastro, validação de CNPJ, impressão, backup)
+- `app.js` — fichas, assinaturas, CA, impressão, funções, lixeira e backup
+- `gestao.js` — painel, colaboradores, catálogo de EPIs, estoque, kit por função e trocas
+- `sw.js` e `manifest.webmanifest` — app instalável e funcionamento offline (ao publicar uma versão nova, troque `VERSAO` no `sw.js`)
 - `style.css` — visual e layout de impressão
 - `servidor.js` — servidor local opcional
 - `atualizar-base-ca.js` — baixa a base do CAEPI e gera `data/cas.js`

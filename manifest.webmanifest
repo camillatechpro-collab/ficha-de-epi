@@ -1,0 +1,14 @@
+{
+  "name": "Ficha de EPI — Controle de entrega de EPI",
+  "short_name": "Ficha de EPI",
+  "description": "Fichas de entrega de EPI com assinatura na tela, trocas, estoque e kit por função.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f5f7",
+  "theme_color": "#1f2a37",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
