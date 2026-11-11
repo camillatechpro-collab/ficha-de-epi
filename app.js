@@ -87,9 +87,11 @@ function lerLogo(arquivo) {
 // ---------- armazenamento ----------
 const lerFichas = () => { try { return JSON.parse(localStorage.getItem(CHAVE)) || []; } catch { return []; } };
 function gravarFichas(lista) {
-  try { localStorage.setItem(CHAVE, JSON.stringify(lista)); return true; }
+  try { localStorage.setItem(CHAVE, JSON.stringify(lista)); avisarAlteracao(); return true; }
   catch { toast('Espaço do navegador cheio. Faça um backup e remova fichas antigas.'); return false; }
 }
+/** Avisa a sincronização (nuvem.js) que algo foi salvo no aparelho. */
+const avisarAlteracao = () => window.dispatchEvent(new Event('dados-alterados'));
 
 const itemVazio = () => ({ uid: novoId(), epi: '', descricao: '', ca: '', qtd: 1, entrega: hoje(), recebimento: '' });
 
@@ -134,6 +136,10 @@ function rotear() {
   const [rota, id] = h.split('/');
   let ativo = 'lista';
   fecharBusca();
+  // Com a nuvem configurada, nada abre sem login (nuvem.js)
+  if (precisaLogin()) { telaLogin(); return; }
+  document.body.classList.remove('sem-login');
+  if (rota === 'conta') { telaConta(); marcarMenu('dados'); return; }
   if (rota === 'nova') { telaEditor(pegarRascunho() || fichaNova()); }
   else if (rota === 'ficha' || rota === 'assinar') {
     const f = lerFichas().find((x) => x.id === decodeURIComponent(id || ''));
@@ -148,6 +154,10 @@ function rotear() {
   else if (rota === 'colaborador') { ativo = 'colaboradores'; telaColaborador(decodeURIComponent(id || '')); }
   else if (rota === 'epis') { ativo = 'epis'; telaEpis(); }
   else { ativo = 'painel'; telaPainel(); }
+  marcarMenu(ativo);
+}
+
+function marcarMenu(ativo) {
   document.querySelectorAll('.menu a').forEach((a) => a.classList.toggle('ativo', a.dataset.rota === ativo));
   atualizarMenu();
   window.scrollTo(0, 0);
@@ -848,10 +858,17 @@ function salvar() {
 
 // ---------- funções da empresa ----------
 const CHAVE_FUNCOES = 'fichaEpi.funcoes';
-const lerFuncoes = () => { try { return JSON.parse(localStorage.getItem(CHAVE_FUNCOES)) || []; } catch { return []; } };
+function lerFuncoes() {
+  let l = [];
+  try { l = JSON.parse(localStorage.getItem(CHAVE_FUNCOES)) || []; } catch { /* ignora */ }
+  // Funções antigas não tinham id; a sincronização com a nuvem precisa de um
+  if (l.some((f) => !f.id)) { l.forEach((f) => { if (!f.id) f.id = novoId(); }); gravarFuncoes(l); }
+  return l;
+}
 const ordenarFuncoes = (l) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 function gravarFuncoes(lista) {
-  try { localStorage.setItem(CHAVE_FUNCOES, JSON.stringify(ordenarFuncoes(lista))); return true; }
+  lista.forEach((f) => { if (!f.id) f.id = novoId(); });
+  try { localStorage.setItem(CHAVE_FUNCOES, JSON.stringify(ordenarFuncoes(lista))); avisarAlteracao(); return true; }
   catch { toast('Não foi possível salvar as funções.'); return false; }
 }
 const mesmoNome = (a, b) => normalizar(a).trim() === normalizar(b).trim();
@@ -962,7 +979,7 @@ function lerLixeira() {
   return validas;
 }
 function gravarLixeira(lista) {
-  try { localStorage.setItem(CHAVE_LIXEIRA, JSON.stringify(lista)); return true; }
+  try { localStorage.setItem(CHAVE_LIXEIRA, JSON.stringify(lista)); avisarAlteracao(); return true; }
   catch { toast('Espaço do navegador cheio. Esvazie a lixeira ou faça um backup.'); return false; }
 }
 
@@ -1040,10 +1057,10 @@ function telaBackup() {
   app.innerHTML = `
     <div class="saudacao"><div><h1>Dados</h1><p class="data">${n} ficha${n === 1 ? '' : 's'} salva${n === 1 ? '' : 's'} neste navegador</p></div>
       <a class="btn sec" href="#/lixeira">🗑️ Lixeira${nLixo ? ` (${nLixo})` : ''}</a></div>
-    <div class="campanha">
+    ${cartaoNuvem() || `<div class="campanha">
       <strong>Os dados ficam só neste navegador</strong>
       <span>Faça backup com frequência. Limpar os dados do navegador apaga as fichas que não tiverem backup.</span>
-    </div>
+    </div>`}
     <section class="cartao">
       <h2>Fazer backup</h2>
       <p class="dica">Baixa um arquivo com todas as fichas, as funções cadastradas e a lixeira. Guarde em um local seguro: ele contém CPFs e assinaturas.</p>

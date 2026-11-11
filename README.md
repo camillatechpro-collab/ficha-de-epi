@@ -10,6 +10,33 @@ App simples para criar fichas de controle de entrega de EPI (NR-06) para os cola
 - **Termo de responsabilidade**: texto padrão baseado na NR-06 e no art. 158 da CLT, editável em cada ficha. Confira com a redação vigente da norma.
 - **Imprimir / PDF**: gera a ficha em A4 com coluna de assinatura por EPI, linhas em branco para entregas futuras e campos de assinatura. Para PDF, escolha "Salvar como PDF" na janela de impressão.
 
+## Login e dados na nuvem (Supabase)
+
+Com a nuvem configurada:
+- **Login por e-mail e senha**, com "Esqueci minha senha".
+- **Uma conta por empresa**: o dono convida a equipe pelo e-mail e todos veem as mesmas fichas, colaboradores e estoque.
+- **Funciona sem internet**: tudo é salvo no aparelho e enviado à nuvem quando a conexão volta. O status aparece no topo da tela (☁️ Salvo na nuvem / 📴 Sem internet).
+- **Nada se perde**: os registros nunca são apagados de verdade no servidor, e **cada alteração ou exclusão guarda a versão anterior** no histórico. Em *Dados › Conta, equipe e histórico* você vê o que mudou, quem mudou e pode **restaurar** a versão anterior. O backup em arquivo continua disponível.
+- Ao sair da conta, os dados da empresa são apagados do aparelho, mas continuam na nuvem. Se houver algo ainda não enviado, o app baixa um backup antes.
+
+Sem configurar, o app funciona como antes: só no aparelho, sem login.
+
+### Como configurar (uma vez)
+
+1. Crie um projeto em https://supabase.com (plano gratuito), por exemplo com o nome `ficha-de-epi` e a região São Paulo.
+2. No projeto, abra **SQL Editor › New query**, cole todo o conteúdo de `supabase/migrations/20261111000000_inicial.sql` e clique em **Run**.
+3. Em **Authentication › URL Configuration**:
+   - **Site URL**: `https://camillatechpro-collab.github.io/ficha-de-epi/`
+   - **Redirect URLs**: adicione `https://camillatechpro-collab.github.io/ficha-de-epi/` e `http://localhost:5181/`
+4. Em **Project Settings › API Keys**, copie o **Project URL** e a **Publishable key** (ou a "anon") e cole em `config.js`. **Nunca** use a chave secreta (`secret` / `service_role`).
+5. Envie para o GitHub. Em 1 ou 2 minutos o site publicado já pede login.
+
+### Antes de abrir para clientes
+
+- **E-mails**: o envio de e-mails padrão do Supabase é limitado e serve só para testes. Para os e-mails de confirmação e de "esqueci a senha" chegarem aos clientes, configure um SMTP próprio em *Authentication › Emails › SMTP Settings* (ex.: Resend, Brevo ou o e-mail da empresa).
+- **Backup do servidor**: o histórico do app guarda todas as versões, mas o backup automático diário do banco inteiro é do plano pago do Supabase. Confira o plano atual em supabase.com/pricing. No plano gratuito, o projeto é **pausado depois de alguns dias sem uso**.
+- **LGPD**: o sistema guarda CPF e assinaturas. Tenha uma política de privacidade e termos de uso.
+
 ## Gestão de EPIs
 
 - **📊 Painel**: mostra:
@@ -79,6 +106,10 @@ As fichas ficam salvas no próprio navegador (localStorage). Use **Fazer backup*
 - `index.html` — telas
 - `app.js` — fichas, assinaturas, CA, impressão, funções, lixeira e backup
 - `gestao.js` — painel, colaboradores, catálogo de EPIs, estoque, kit por função e trocas
+- `nuvem.js` — login, conta da empresa, equipe, sincronização e histórico (Supabase)
+- `config.js` — endereço e chave pública do Supabase (vazio = só no aparelho)
+- `vendor/supabase.js` — biblioteca oficial do Supabase (versão 2.119.0), guardada no app para funcionar offline
+- `supabase/migrations/` — estrutura do banco (tabelas, segurança e histórico)
 - `sw.js` e `manifest.webmanifest` — app instalável e funcionamento offline (ao publicar uma versão nova, troque `VERSAO` no `sw.js`)
 - `style.css` — visual e layout de impressão
 - `servidor.js` — servidor local opcional

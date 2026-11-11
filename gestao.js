@@ -10,7 +10,7 @@ const DIAS_AVISO_TROCA = 15; // "troca próxima" quando faltam até 15 dias
 
 function lerJson(chave) { try { return JSON.parse(localStorage.getItem(chave)) || []; } catch { return []; } }
 function gravarJson(chave, valor) {
-  try { localStorage.setItem(chave, JSON.stringify(valor)); return true; }
+  try { localStorage.setItem(chave, JSON.stringify(valor)); avisarAlteracao(); return true; }
   catch { toast('Espaço do navegador cheio. Faça um backup e esvazie a lixeira.'); return false; }
 }
 const lerColaboradores = () => lerJson(CHAVE_COLAB);
@@ -697,4 +697,4 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* sem modo offline, o app funciona normalmente */ });
 }
 
-rotear();
+// A primeira tela é aberta por nuvem.js (depois de verificar o login).
