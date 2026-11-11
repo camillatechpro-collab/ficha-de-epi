@@ -9,6 +9,6 @@
 //
 // Com os dois campos vazios, o app funciona como antes: só no aparelho, sem login.
 window.CONFIG_NUVEM = {
-  url: '',
-  chave: '',
+  url: 'https://yqucqxgqcqnxhoouhijd.supabase.co',
+  chave: 'sb_publishable_MXlpHeH4Gne1m0PIh0bZaA_8pbtdC-7',
 };

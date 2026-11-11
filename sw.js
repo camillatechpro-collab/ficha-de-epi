@@ -1,6 +1,6 @@
 // Service worker: deixa o app funcionando sem internet depois do primeiro acesso.
 // Ao publicar uma versão nova, troque o número em VERSAO.
-const VERSAO = 'ficha-epi-v5';
+const VERSAO = 'ficha-epi-v6';
 const ARQUIVOS = ['./', 'index.html', 'style.css', 'app.js', 'gestao.js', 'config.js', 'nuvem.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const BASE_CA = 'data/cas.js';
 
