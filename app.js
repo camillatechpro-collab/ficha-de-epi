@@ -141,9 +141,19 @@ function rotear() {
     if (rota === 'ficha') telaEditor(f); else telaAssinar(f);
   }
   else if (rota === 'backup') { ativo = 'backup'; telaBackup(); }
+  else if (rota === 'funcoes') { ativo = 'funcoes'; telaFuncoes(); }
+  else if (rota === 'lixeira') { ativo = 'lixeira'; telaLixeira(); }
   else telaLista();
   document.querySelectorAll('.menu a').forEach((a) => a.classList.toggle('ativo', a.dataset.rota === ativo));
+  atualizarMenu();
   window.scrollTo(0, 0);
+}
+
+/** Mostra quantas fichas estão na lixeira ao lado do item do menu. */
+function atualizarMenu() {
+  const n = lerLixeira().length;
+  const el = $('#contaLixeira');
+  if (el) { el.textContent = n; el.hidden = !n; }
 }
 window.addEventListener('hashchange', rotear);
 
@@ -210,7 +220,10 @@ function telaEditor(ficha) {
         <div class="grade">
           <label>Nome do colaborador <input type="text" name="colaborador" maxlength="120" autocomplete="off"></label>
           <label>Data da ficha <input type="date" name="data"></label>
-          <label>Função <input type="text" name="funcao" maxlength="120"></label>
+          <label>Função <span class="dica">— <a href="#/funcoes">gerenciar funções</a></span>
+            <input type="text" name="funcao" maxlength="120" list="listaFuncoes" autocomplete="off" placeholder="Escolha ou digite">
+            <datalist id="listaFuncoes"></datalist>
+            <button type="button" class="link-acao" id="btnSalvarFuncao" hidden>＋ salvar na lista de funções</button></label>
           <label>CPF <input type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"></label>
         </div>
       </section>
@@ -251,7 +264,7 @@ function telaEditor(ficha) {
       <section class="cartao">
         <div class="cartao-topo">
           <h2>Assinatura do colaborador</h2>
-          <button type="button" class="btn amarelo peq" id="btnAssinar">✍️ Coletar assinatura</button>
+          <button type="button" class="btn amarelo peq" id="btnAssinar">✍️ Coletar assinaturas</button>
         </div>
         <div id="assinaturas"></div>
       </section>
@@ -282,6 +295,7 @@ function telaEditor(ficha) {
   desenharLogo();
   desenharItens();
   desenharAssinaturas();
+  ligarCampoFuncao();
   form.elements.cpf.addEventListener('input', (e) => { e.target.value = mascararCpf(e.target.value); });
   $('#btnAssinar').addEventListener('click', () => {
     if (!salvar()) return;
@@ -295,12 +309,7 @@ function telaEditor(ficha) {
   $('#btnAddItem').addEventListener('click', () => { atual.itens.push(itemVazio()); desenharItens(); });
   $('#btnTermoPadrao').addEventListener('click', () => { form.elements.termo.value = TERMO_PADRAO; toast('Texto padrão restaurado'); });
   $('#btnImprimir').addEventListener('click', () => { if (salvar()) imprimir(atual); });
-  $('#btnExcluir')?.addEventListener('click', () => {
-    if (!confirm(`Excluir a ficha de ${atual.colaborador}? Essa ação não pode ser desfeita.`)) return;
-    gravarFichas(lerFichas().filter((f) => f.id !== atual.id));
-    toast('Ficha excluída');
-    location.hash = '#/';
-  });
+  $('#btnExcluir')?.addEventListener('click', excluirAtual);
   $('#arqLogo').addEventListener('change', async (e) => {
     const arq = e.target.files[0];
     e.target.value = '';
@@ -323,10 +332,11 @@ function desenharLogo() {
 const formatarCodigo = (hex) => hex.slice(0, 16).toUpperCase().match(/.{4}/g).join('-');
 
 /** Código de verificação: resumo (SHA-256) do que foi assinado. Se algo mudar, o código não confere mais. */
-async function codigoAssinatura(f, itens, em, cpf, imagem) {
+async function codigoAssinatura(f, itens, em, cpf, imagem, responsavel) {
   const conteudo = JSON.stringify({
     colaborador: f.colaborador, cpf: soDigitos(cpf), empresaCnpj: soDigitos(f.empresaCnpj), termo: f.termo, em,
     itens: itens.map((i) => [i.qtd, i.ca, i.epi, i.descricao, i.entrega, i.recebimento]), imagem,
+    responsavel: responsavel ? [responsavel.nome, responsavel.cargo, responsavel.imagem] : null,
   });
   const dados = new TextEncoder().encode(conteudo);
   if (crypto.subtle) {
@@ -345,17 +355,20 @@ function desenharAssinaturas() {
   box.innerHTML = (atual.assinaturas.length
     ? atual.assinaturas.map((a) => {
         const n = atual.itens.filter((i) => i.assinaturaId === a.id).length;
+        const r = a.responsavel;
         return `<div class="assinatura">
-          <img src="${a.imagem}" alt="Assinatura">
+          <img src="${a.imagem}" alt="Assinatura do colaborador" title="Colaborador">
+          ${r ? `<img src="${r.imagem}" alt="Assinatura do responsável" title="Responsável pela entrega">` : ''}
           <div>
             <b>${esc(a.nome)}</b> · CPF ${esc(a.cpf)}<br>
+            ${r ? `Entregue por <b>${esc(r.nome)}</b>${r.cargo ? ` (${esc(r.cargo)})` : ''}<br>` : ''}
             Assinado em ${dataHoraBR(a.em)} · ${n} EPI${n === 1 ? '' : 's'}<br>
             <small>Código de verificação: ${formatarCodigo(a.codigo)}</small>
           </div>
           <button type="button" class="btn perigo peq" data-remover="${a.id}">Remover</button>
         </div>`;
       }).join('')
-    : '<p class="dica" style="margin:0 0 4px">Nenhuma assinatura ainda. Entregue o celular ou tablet ao colaborador e clique em “Coletar assinatura”.</p>')
+    : '<p class="dica" style="margin:0 0 4px">Nenhuma assinatura ainda. Clique em “Coletar assinaturas” e entregue o celular ou tablet ao colaborador; depois o responsável pela entrega assina.</p>')
     + (atual.assinaturas.length && pend ? `<p class="dica">${pend} EPI${pend === 1 ? '' : 's'} ainda sem assinatura.</p>` : '');
   $('#btnAssinar').hidden = atual.assinaturas.length > 0 && !pend;
 
@@ -378,6 +391,8 @@ function telaAssinar(f) {
   const itens = itensSemAssinatura(f);
   if (!itens.length) { location.hash = `#/ficha/${encodeURIComponent(f.id)}`; return; }
   assinando = f;
+  let resp = {};
+  try { resp = JSON.parse(localStorage.getItem(CHAVE_RESP)) || {}; } catch { /* ignora */ }
   app.innerHTML = `
     <a href="#/ficha/${encodeURIComponent(f.id)}" class="voltar">← Voltar para a ficha</a>
     <div class="saudacao"><div><h1>Assinatura do recebimento de EPI</h1>
@@ -399,23 +414,42 @@ function telaAssinar(f) {
     </section>
 
     <section class="cartao">
-      <h2>Sua assinatura</h2>
+      <h2>1. Assinatura do colaborador</h2>
       <label>Seu CPF <input type="text" id="cpfAssinante" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"></label>
       <span class="rotulo-pad">Assine no quadro abaixo com o dedo ou a caneta</span>
-      <div class="pad"><canvas id="pad"></canvas><span class="pad-linha"></span><span class="pad-dica" id="padDica">Assine aqui</span></div>
-      <div class="barra" style="margin-bottom:0"><button type="button" class="btn sec peq" id="btnLimpar">Limpar</button></div>
-      <p id="erro" class="erro" hidden></p>
+      ${quadroAssinatura('pad')}
     </section>
 
+    <section class="cartao">
+      <h2>2. Responsável pela entrega</h2>
+      <div class="grade">
+        <label>Nome <input type="text" id="respNome" maxlength="120" value="${esc(resp.nome || '')}"></label>
+        <label>Cargo <span class="dica">— opcional</span><input type="text" id="respCargo" maxlength="80" value="${esc(resp.cargo || '')}" placeholder="Ex.: Técnico de Segurança"></label>
+      </div>
+      <span class="rotulo-pad">Assinatura do responsável</span>
+      ${quadroAssinatura('padResp')}
+    </section>
+
+    <p id="erro" class="erro" hidden></p>
     <div class="barra">
-      <button type="button" class="btn verde" id="btnConfirmar">✓ Confirmar assinatura</button>
+      <button type="button" class="btn verde" id="btnConfirmar">✓ Confirmar assinaturas</button>
       <a class="btn sec" href="#/ficha/${encodeURIComponent(f.id)}">Cancelar</a>
     </div>`;
 
   $('#cpfAssinante').addEventListener('input', (e) => { e.target.value = mascararCpf(e.target.value); });
-  const pad = criarPad($('#pad'), () => { $('#padDica').hidden = true; });
-  $('#btnLimpar').addEventListener('click', () => { pad.limpar(); $('#padDica').hidden = false; });
-  $('#btnConfirmar').addEventListener('click', () => confirmarAssinatura(pad, itens));
+  const pad = ligarQuadro('pad');
+  const padResp = ligarQuadro('padResp');
+  $('#btnConfirmar').addEventListener('click', () => confirmarAssinatura(pad, padResp, itens));
+}
+
+const CHAVE_RESP = 'fichaEpi.responsavel';
+const quadroAssinatura = (id) => `
+  <div class="pad"><canvas id="${id}"></canvas><span class="pad-linha"></span><span class="pad-dica" id="${id}Dica">Assine aqui</span></div>
+  <div class="barra" style="margin-bottom:0"><button type="button" class="btn sec peq" id="${id}Limpar">Limpar</button></div>`;
+function ligarQuadro(id) {
+  const pad = criarPad($(`#${id}`), () => { $(`#${id}Dica`).hidden = true; });
+  $(`#${id}Limpar`).addEventListener('click', () => { pad.limpar(); $(`#${id}Dica`).hidden = false; });
+  return pad;
 }
 
 /** Quadro de assinatura: funciona com mouse, dedo e caneta (pointer events). */
@@ -471,14 +505,18 @@ function criarPad(canvas, aoDesenhar) {
   };
 }
 
-async function confirmarAssinatura(pad, itens) {
+async function confirmarAssinatura(pad, padResp, itens) {
   const f = assinando;
   const cpf = $('#cpfAssinante').value.trim();
+  const respNome = $('#respNome').value.trim();
+  const respCargo = $('#respCargo').value.trim();
   const erro = (msg) => { $('#erro').textContent = msg; $('#erro').hidden = false; };
   if (!$('#concordo').checked) return erro('Marque que você leu o termo e recebeu os EPIs.');
-  if (!cpfValido(cpf)) return erro('CPF inválido. Confira os números.');
+  if (!cpfValido(cpf)) return erro('CPF do colaborador inválido. Confira os números.');
   if (f.cpf && soDigitos(f.cpf) !== soDigitos(cpf)) return erro('O CPF não confere com o cadastrado na ficha.');
-  if (pad.vazio()) return erro('Faça sua assinatura no quadro.');
+  if (pad.vazio()) return erro('O colaborador precisa assinar no quadro 1.');
+  if (!respNome) return erro('Informe o nome do responsável pela entrega.');
+  if (padResp.vazio()) return erro('O responsável pela entrega precisa assinar no quadro 2.');
   $('#erro').hidden = true;
   $('#btnConfirmar').disabled = true;
 
@@ -487,8 +525,10 @@ async function confirmarAssinatura(pad, itens) {
   // A assinatura confirma o recebimento: preenche a data de recebimento que estiver vazia
   for (const i of itens) if (!i.recebimento) i.recebimento = dia;
   const imagem = pad.imagem();
-  const a = { id: novoId(), em, nome: f.colaborador, cpf: mascararCpf(cpf), imagem,
-    codigo: await codigoAssinatura(f, itens, em, cpf, imagem) };
+  const responsavel = { nome: respNome, cargo: respCargo, imagem: padResp.imagem() };
+  const a = { id: novoId(), em, nome: f.colaborador, cpf: mascararCpf(cpf), imagem, responsavel,
+    codigo: await codigoAssinatura(f, itens, em, cpf, imagem, responsavel) };
+  localStorage.setItem(CHAVE_RESP, JSON.stringify({ nome: respNome, cargo: respCargo }));
   f.assinaturas.push(a);
   for (const i of itens) i.assinaturaId = a.id;
   if (!f.cpf) f.cpf = mascararCpf(cpf);
@@ -768,15 +808,190 @@ function salvar() {
   if (novo && !$('#btnExcluir')) {
     const b = document.createElement('button');
     b.className = 'btn perigo'; b.type = 'button'; b.id = 'btnExcluir'; b.textContent = 'Excluir';
-    b.addEventListener('click', () => {
-      if (!confirm(`Excluir a ficha de ${atual.colaborador}? Essa ação não pode ser desfeita.`)) return;
-      gravarFichas(lerFichas().filter((f) => f.id !== atual.id));
-      toast('Ficha excluída');
-      location.hash = '#/';
-    });
+    b.addEventListener('click', excluirAtual);
     $('.barra').appendChild(b);
   }
   return true;
+}
+
+// ---------- funções da empresa ----------
+const CHAVE_FUNCOES = 'fichaEpi.funcoes';
+const lerFuncoes = () => { try { return JSON.parse(localStorage.getItem(CHAVE_FUNCOES)) || []; } catch { return []; } };
+const ordenarFuncoes = (l) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+function gravarFuncoes(lista) {
+  try { localStorage.setItem(CHAVE_FUNCOES, JSON.stringify(ordenarFuncoes(lista))); return true; }
+  catch { toast('Não foi possível salvar as funções.'); return false; }
+}
+const mesmoNome = (a, b) => normalizar(a).trim() === normalizar(b).trim();
+
+function telaFuncoes() {
+  const funcoes = lerFuncoes();
+  const fichas = lerFichas();
+  const uso = (nome) => fichas.filter((f) => mesmoNome(f.funcao || '', nome)).length;
+  const foraDaLista = [...new Set(fichas.map((f) => (f.funcao || '').trim()).filter(Boolean))]
+    .filter((n) => !funcoes.some((x) => mesmoNome(x.nome, n)));
+
+  app.innerHTML = `
+    <div class="saudacao"><div><h1>Funções da empresa</h1>
+      <p class="data">Cadastre as funções existentes para escolher na ficha sem precisar digitar</p></div></div>
+
+    <section class="cartao">
+      <h2>Nova função</h2>
+      <form id="formFuncao" class="grade-funcao">
+        <label>Função <input type="text" id="novaFuncao" maxlength="120" placeholder="Ex.: Soldador" autocomplete="off"></label>
+        <label>Setor <span class="dica">— opcional</span><input type="text" id="novoSetor" maxlength="80" placeholder="Ex.: Manutenção"></label>
+        <button class="btn" type="submit">＋ Adicionar</button>
+      </form>
+      ${foraDaLista.length ? `<div class="campanha" style="margin:14px 0 0">
+        <strong>${foraDaLista.length} função${foraDaLista.length === 1 ? '' : 'ões'} usada${foraDaLista.length === 1 ? '' : 's'} nas fichas ainda fora da lista</strong>
+        <span>${foraDaLista.map(esc).join(', ')}</span><br>
+        <button class="btn amarelo peq" id="btnImportar" style="margin-top:8px">Adicionar à lista</button></div>` : ''}
+    </section>
+
+    <p class="contagem">${funcoes.length} função${funcoes.length === 1 ? '' : 'ões'} cadastrada${funcoes.length === 1 ? '' : 's'}</p>
+    <div class="lista">${funcoes.length ? funcoes.map((f, i) => {
+      const n = uso(f.nome);
+      return `<div class="item item-funcao">
+        <div><h3>${esc(f.nome)}</h3>
+          <div class="selos">${f.setor ? `<span class="selo nr">${esc(f.setor)}</span>` : ''}
+          <span class="selo">${n} ficha${n === 1 ? '' : 's'}</span></div></div>
+        <div class="acoes-lixo">
+          <button class="btn sec peq" data-editar="${i}">Editar</button>
+          <button class="btn perigo peq" data-remover="${i}">Remover</button>
+        </div></div>`;
+    }).join('') : '<div class="cartao vazio">Nenhuma função cadastrada ainda.</div>'}</div>`;
+
+  $('#formFuncao').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = $('#novaFuncao').value.trim();
+    const setor = $('#novoSetor').value.trim();
+    if (!nome) { toast('Digite o nome da função.'); return; }
+    if (funcoes.some((f) => mesmoNome(f.nome, nome))) { toast('Essa função já está na lista.'); return; }
+    if (gravarFuncoes([...funcoes, { nome, setor }])) { toast('Função adicionada ✓'); telaFuncoes(); $('#novaFuncao').focus(); }
+  });
+  $('#btnImportar')?.addEventListener('click', () => {
+    if (gravarFuncoes([...funcoes, ...foraDaLista.map((nome) => ({ nome, setor: '' }))])) { toast('Funções adicionadas ✓'); telaFuncoes(); }
+  });
+  app.querySelectorAll('[data-editar]').forEach((b) => b.addEventListener('click', () => {
+    const f = funcoes[b.dataset.editar];
+    const nome = prompt('Nome da função:', f.nome);
+    if (nome === null) return;
+    if (!nome.trim()) { toast('O nome não pode ficar vazio.'); return; }
+    if (funcoes.some((x) => x !== f && mesmoNome(x.nome, nome))) { toast('Já existe uma função com esse nome.'); return; }
+    const setor = prompt('Setor (opcional):', f.setor || '');
+    f.nome = nome.trim();
+    if (setor !== null) f.setor = setor.trim();
+    if (gravarFuncoes(funcoes)) { toast('Função atualizada ✓ (fichas já salvas mantêm o nome antigo)'); telaFuncoes(); }
+  }));
+  app.querySelectorAll('[data-remover]').forEach((b) => b.addEventListener('click', () => {
+    const f = funcoes[b.dataset.remover];
+    if (!confirm(`Remover a função "${f.nome}" da lista? As fichas que já usam essa função não mudam.`)) return;
+    funcoes.splice(b.dataset.remover, 1);
+    if (gravarFuncoes(funcoes)) { toast('Função removida'); telaFuncoes(); }
+  }));
+}
+
+/** No editor: sugere as funções cadastradas e oferece salvar uma nova. */
+function ligarCampoFuncao() {
+  const campo = $('#form').elements.funcao;
+  const dl = $('#listaFuncoes');
+  const desenhar = () => {
+    const funcoes = lerFuncoes();
+    dl.innerHTML = funcoes.map((f) => `<option value="${esc(f.nome)}">${f.setor ? esc(f.setor) : ''}</option>`).join('');
+    const v = campo.value.trim();
+    $('#btnSalvarFuncao').hidden = !v || funcoes.some((f) => mesmoNome(f.nome, v));
+  };
+  campo.addEventListener('input', desenhar);
+  $('#btnSalvarFuncao').addEventListener('click', () => {
+    const nome = campo.value.trim();
+    if (nome && gravarFuncoes([...lerFuncoes(), { nome, setor: '' }])) { toast(`“${nome}” adicionada às funções ✓`); desenhar(); }
+  });
+  desenhar();
+}
+
+// ---------- lixeira ----------
+const CHAVE_LIXEIRA = 'fichaEpi.lixeira';
+const DIAS_LIXEIRA = 30;
+
+/** Lê a lixeira e já descarta o que passou de 30 dias. */
+function lerLixeira() {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem(CHAVE_LIXEIRA)) || []; } catch { /* ignora */ }
+  const limite = Date.now() - DIAS_LIXEIRA * 864e5;
+  const validas = lista.filter((f) => new Date(f.excluidaEm).getTime() > limite);
+  if (validas.length !== lista.length) gravarLixeira(validas);
+  return validas;
+}
+function gravarLixeira(lista) {
+  try { localStorage.setItem(CHAVE_LIXEIRA, JSON.stringify(lista)); return true; }
+  catch { toast('Espaço do navegador cheio. Esvazie a lixeira ou faça um backup.'); return false; }
+}
+
+function excluirAtual() {
+  if (!confirm(`Mover a ficha de ${atual.colaborador} para a lixeira? Você pode restaurá-la em até ${DIAS_LIXEIRA} dias.`)) return;
+  const lista = lerFichas();
+  const f = lista.find((x) => x.id === atual.id);
+  if (f) {
+    if (!gravarLixeira([{ ...f, excluidaEm: new Date().toISOString() }, ...lerLixeira().filter((x) => x.id !== f.id)])) return;
+    gravarFichas(lista.filter((x) => x.id !== f.id));
+  }
+  toast('Ficha movida para a lixeira');
+  location.hash = '#/';
+}
+
+function telaLixeira() {
+  const lixo = lerLixeira();
+  app.innerHTML = `
+    <div class="saudacao">
+      <div><h1>Lixeira</h1><p class="data">Fichas excluídas ficam aqui por ${DIAS_LIXEIRA} dias e depois são apagadas</p></div>
+      ${lixo.length ? '<button class="btn perigo" id="btnEsvaziar">Esvaziar lixeira</button>' : ''}
+    </div>
+    <div class="lista">${lixo.length ? lixo.map((f) => {
+      const resta = Math.max(1, Math.ceil((new Date(f.excluidaEm).getTime() + DIAS_LIXEIRA * 864e5 - Date.now()) / 864e5));
+      return `<div class="item item-lixo">
+        <div>
+          <h3>${esc(f.colaborador)}</h3>
+          <div class="selos">
+            ${f.funcao ? `<span class="selo">${esc(f.funcao)}</span>` : ''}
+            ${f.empresaNome ? `<span class="selo nr">${esc(f.empresaNome)}</span>` : ''}
+            <span class="selo pendente">excluída em ${dataHoraBR(f.excluidaEm)}</span>
+          </div>
+          <p>${f.itens.map((i) => esc(i.epi)).join(' · ')} — apagada de vez em ${resta} dia${resta === 1 ? '' : 's'}</p>
+        </div>
+        <div class="acoes-lixo">
+          <button class="btn verde peq" data-restaurar="${esc(f.id)}">↩ Restaurar</button>
+          <button class="btn perigo peq" data-apagar="${esc(f.id)}">Excluir de vez</button>
+        </div>
+      </div>`;
+    }).join('') : '<div class="cartao vazio">A lixeira está vazia.</div>'}</div>`;
+
+  app.querySelectorAll('[data-restaurar]').forEach((b) => b.addEventListener('click', () => {
+    const lixeira = lerLixeira();
+    const f = lixeira.find((x) => x.id === b.dataset.restaurar);
+    if (!f) return;
+    delete f.excluidaEm;
+    const fichas = lerFichas().filter((x) => x.id !== f.id);
+    if (!gravarFichas([...fichas, f])) return;
+    gravarLixeira(lixeira.filter((x) => x.id !== f.id));
+    toast(`Ficha de ${f.colaborador} restaurada ✓`);
+    telaLixeira();
+    atualizarMenu();
+  }));
+  app.querySelectorAll('[data-apagar]').forEach((b) => b.addEventListener('click', () => {
+    const f = lerLixeira().find((x) => x.id === b.dataset.apagar);
+    if (!f || !confirm(`Excluir de vez a ficha de ${f.colaborador}? Ela não poderá mais ser recuperada (a não ser por um backup).`)) return;
+    gravarLixeira(lerLixeira().filter((x) => x.id !== f.id));
+    toast('Ficha excluída definitivamente');
+    telaLixeira();
+    atualizarMenu();
+  }));
+  $('#btnEsvaziar')?.addEventListener('click', () => {
+    if (!confirm(`Esvaziar a lixeira? ${lixo.length} ficha${lixo.length === 1 ? '' : 's'} serão apagadas de vez.`)) return;
+    gravarLixeira([]);
+    toast('Lixeira esvaziada');
+    telaLixeira();
+    atualizarMenu();
+  });
 }
 
 // ---------- tela: backup ----------
@@ -790,7 +1005,7 @@ function telaBackup() {
     </div>
     <section class="cartao">
       <h2>Fazer backup</h2>
-      <p class="dica">Baixa um arquivo com todas as fichas. Guarde em um local seguro.</p>
+      <p class="dica">Baixa um arquivo com todas as fichas, as funções cadastradas e a lixeira. Guarde em um local seguro: ele contém CPFs e assinaturas.</p>
       <button class="btn" id="btnBaixar">💾 Baixar backup</button>
     </section>
     <section class="cartao">
@@ -804,7 +1019,8 @@ function telaBackup() {
 }
 
 function fazerBackup() {
-  const blob = new Blob([JSON.stringify({ app: 'ficha-epi', versao: 1, fichas: lerFichas() }, null, 2)], { type: 'application/json' });
+  const dados = { app: 'ficha-epi', versao: 2, fichas: lerFichas(), funcoes: lerFuncoes(), lixeira: lerLixeira() };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `fichas-epi-backup-${hoje()}.json`;
@@ -825,8 +1041,26 @@ async function restaurarBackup(arq) {
       if (!f || !f.id || !Array.isArray(f.itens)) continue;
       if (ids.has(f.id)) { lista[ids.get(f.id)] = f; upd++; } else { lista.push(f); add++; }
     }
-    if (gravarFichas(lista)) toast(`Backup restaurado ✓ ${add} nova(s), ${upd} atualizada(s)`);
+    if (!gravarFichas(lista)) return;
+
+    // Funções: junta as do backup com as atuais, sem repetir
+    const funcoes = lerFuncoes();
+    for (const fn of Array.isArray(dados.funcoes) ? dados.funcoes : []) {
+      if (fn?.nome && !funcoes.some((x) => mesmoNome(x.nome, fn.nome))) funcoes.push({ nome: String(fn.nome), setor: String(fn.setor || '') });
+    }
+    gravarFuncoes(funcoes);
+
+    // Lixeira: ficha que voltou para a lista sai da lixeira; as do backup entram se não existirem
+    const ativas = new Set(lista.map((f) => f.id));
+    const lixeira = lerLixeira().filter((f) => !ativas.has(f.id));
+    for (const f of Array.isArray(dados.lixeira) ? dados.lixeira : []) {
+      if (f?.id && f.excluidaEm && Array.isArray(f.itens) && !ativas.has(f.id) && !lixeira.some((x) => x.id === f.id)) lixeira.push(f);
+    }
+    gravarLixeira(lixeira);
+
+    toast(`Backup restaurado ✓ ${add} nova(s), ${upd} atualizada(s)`);
     telaBackup();
+    atualizarMenu();
   } catch {
     toast('Não foi possível ler esse arquivo de backup.');
   }
@@ -844,11 +1078,13 @@ function imprimir(f) {
   const ultima = f.assinaturas[f.assinaturas.length - 1];
   const registros = f.assinaturas.length ? `
     <div class="imp-registro">
-      <b>Registro de assinatura eletrônica</b> — assinatura feita pelo colaborador na tela do dispositivo, com confirmação do CPF.
-      A NR-06 admite o registro do fornecimento de EPI em sistema eletrônico.
+      <b>Registro de assinatura eletrônica</b> — assinaturas feitas na tela do dispositivo pelo colaborador (com confirmação do CPF)
+      e pelo responsável pela entrega. A NR-06 admite o registro do fornecimento de EPI em sistema eletrônico.
       ${f.assinaturas.map((a) => {
         const n = f.itens.filter((i) => i.assinaturaId === a.id).length;
-        return `<br>• ${esc(a.nome)} · CPF ${esc(a.cpf)} · ${dataHoraBR(a.em)} · ${n} EPI${n === 1 ? '' : 's'} · código de verificação <b>${formatarCodigo(a.codigo)}</b>`;
+        const r = a.responsavel;
+        return `<br>• ${esc(a.nome)} · CPF ${esc(a.cpf)}${r ? ` · entregue por ${esc(r.nome)}${r.cargo ? ` (${esc(r.cargo)})` : ''}` : ''}
+          · ${dataHoraBR(a.em)} · ${n} EPI${n === 1 ? '' : 's'} · código de verificação <b>${formatarCodigo(a.codigo)}</b>`;
       }).join('')}
     </div>` : '';
   for (let n = f.itens.length; n < LINHAS_MINIMAS; n++) linhas.push('<tr class="branca"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
@@ -874,7 +1110,8 @@ function imprimir(f) {
       ${f.obs ? `<p class="imp-obs"><b>Observações:</b> ${esc(f.obs)}</p>` : ''}
       <div class="imp-assin">
         <div>${ultima ? `<img class="imp-ass-img" src="${ultima.imagem}" alt="">` : ''}<span>${esc(f.colaborador)}</span><small>Assinatura do colaborador</small></div>
-        <div><span>&nbsp;</span><small>Responsável pela entrega</small></div>
+        <div>${ultima?.responsavel ? `<img class="imp-ass-img" src="${ultima.responsavel.imagem}" alt="">` : ''}<span>${ultima?.responsavel
+          ? esc(ultima.responsavel.nome) + (ultima.responsavel.cargo ? ` — ${esc(ultima.responsavel.cargo)}` : '') : '&nbsp;'}</span><small>Responsável pela entrega</small></div>
       </div>
       ${ultima ? '' : '<p class="imp-local">Local e data: ______________________________, ____/____/________</p>'}
       ${registros}

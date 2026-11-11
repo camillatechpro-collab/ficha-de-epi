@@ -196,6 +196,21 @@ label input, label select, label textarea { margin-top: 5px; font-weight: 400; }
 .ca-info.bom { background: var(--verde-claro); color: var(--verde); }
 .ca-info.ruim { background: #fbe9e7; color: var(--vermelho); }
 .ca-info small { opacity: .75; }
+/* ---------- Menu: contador da lixeira ---------- */
+.badge { background: var(--vermelho); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; line-height: 1.4; }
+@media (max-width: 720px) { .menu a { position: relative; } .badge { position: absolute; top: 2px; right: 18%; } }
+
+/* ---------- Lixeira e funções ---------- */
+.item-lixo, .item-funcao { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.item-lixo:hover, .item-funcao:hover { border-color: var(--linha); box-shadow: none; }
+.acoes-lixo { display: flex; gap: 6px; flex-shrink: 0; }
+@media (max-width: 560px) { .item-lixo, .item-funcao { flex-direction: column; align-items: stretch; } }
+.grade-funcao { display: grid; grid-template-columns: 2fr 1.4fr auto; gap: 0 12px; align-items: end; }
+.grade-funcao .btn { margin-bottom: 12px; }
+@media (max-width: 560px) { .grade-funcao { grid-template-columns: 1fr; } }
+.link-acao { appearance: none; border: 0; background: none; padding: 4px 0 0; color: var(--azul); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.link-acao:hover { text-decoration: underline; }
+
 /* ---------- Assinatura ---------- */
 .travado input:disabled { background: #f6f7f9; color: var(--texto); border-color: var(--linha); -webkit-text-fill-color: var(--texto); }
 .ca-info.assinado { background: #e6efff; color: var(--azul); margin-bottom: 4px; }
@@ -284,6 +299,7 @@ input[readonly], textarea[readonly] { background: #f6f7f9; }
   .imp-ass-img { display: block; max-height: 16mm; max-width: 70%; margin: 0 auto -2mm; }
   .imp-ass-cel { padding: 1px 4px !important; vertical-align: middle !important; text-align: center !important; }
   .imp-ass-cel img { max-height: 9mm; max-width: 100%; }
+  .imp-registro b { white-space: nowrap; }
   .imp-registro { margin-top: 10px; border: 1px solid #000; padding: 4px 8px; font-size: 7.5pt; line-height: 1.4; }
   .imp-assin small { display: block; font-size: 8pt; }
   .imp-local { margin: 14px 0 0; font-size: 9.5pt; }

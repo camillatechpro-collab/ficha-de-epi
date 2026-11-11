@@ -10,16 +10,25 @@ App simples para criar fichas de controle de entrega de EPI (NR-06) para os cola
 - **Termo de responsabilidade**: texto padrão baseado na NR-06 e no art. 158 da CLT, editável em cada ficha. Confira com a redação vigente da norma.
 - **Imprimir / PDF**: gera a ficha em A4 com coluna de assinatura por EPI, linhas em branco para entregas futuras e campos de assinatura. Para PDF, escolha "Salvar como PDF" na janela de impressão.
 
-## Assinatura do colaborador na tela
+## Funções da empresa
 
-1. Na ficha, clique em **✍️ Coletar assinatura** e entregue o celular ou tablet ao colaborador. No computador, ele assina com o mouse.
+No menu **👷 Funções**, cadastre as funções existentes na empresa, com setor opcional. Na ficha, o campo **Função** sugere essas funções enquanto você digita. Se digitar uma função nova, aparece o atalho **＋ salvar na lista de funções**. A tela também mostra as funções já usadas nas fichas que ainda não estão na lista e permite adicioná-las de uma vez.
+
+## Lixeira
+
+Excluir uma ficha a move para a **🗑️ Lixeira**, onde ela fica por **30 dias**. Lá você pode **restaurar** a ficha, com as assinaturas, ou **excluir de vez**. Depois de 30 dias ela é apagada automaticamente. O número ao lado de "Lixeira" no menu mostra quantas fichas estão lá.
+
+## Assinatura do colaborador e do responsável na tela
+
+1. Na ficha, clique em **✍️ Coletar assinaturas** e entregue o celular ou tablet ao colaborador. No computador, ele assina com o mouse.
 2. O colaborador vê os EPIs e o termo, marca que leu, digita o **CPF** e **assina com o dedo ou a caneta**. Se a ficha já tiver CPF, o digitado precisa ser igual.
-3. Ao confirmar:
+3. Em seguida, o **responsável pela entrega** informa o nome e o cargo (opcional) e assina no segundo quadro. O nome e o cargo ficam guardados para a próxima vez.
+4. Ao confirmar:
    - a data de recebimento vazia é preenchida;
    - os EPIs assinados ficam **travados**, sem edição;
    - nome, CPF e termo também ficam fixos;
    - é gerado um **código de verificação**, um resumo SHA-256 do que foi assinado.
-4. Na ficha impressa aparecem a assinatura em cada EPI, o CPF e o registro com data, hora e código.
+5. Na ficha impressa aparecem a assinatura do colaborador em cada EPI, as duas assinaturas no final, o CPF e o registro com data, hora, responsável e código.
 
 Para uma nova entrega, adicione os EPIs e colete outra assinatura. Só os itens novos são assinados. Para corrigir algo já assinado, remova a assinatura (os itens voltam a ser editáveis) e colete de novo.
 
@@ -39,7 +48,7 @@ O script baixa a base oficial (cerca de 8 MB) e gera de novo o `data/cas.js`. El
 
 ## Dados
 
-As fichas ficam salvas no próprio navegador (localStorage). Use **Fazer backup** para baixar um arquivo `.json` com tudo e **Restaurar backup** para carregar em outro computador ou navegador. Limpar os dados do navegador apaga as fichas.
+As fichas ficam salvas no próprio navegador (localStorage). Use **Fazer backup** para baixar um arquivo `.json` com tudo (fichas, funções e lixeira) e **Restaurar backup** para carregar em outro computador ou navegador. Limpar os dados do navegador apaga as fichas.
 
 ## Arquivos
 
